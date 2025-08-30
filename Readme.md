@@ -210,4 +210,4 @@ spec:
 
 - The ETCD is like the "brains" of the control plane.
 
-![Pods Configuration](../KubernetesMasterclassLab/Images/pods.png)
+![Pods Configuration](./Images/pods.png)

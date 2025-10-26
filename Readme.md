@@ -87,6 +87,9 @@ Commands
 **kubectl delete pod podname**
 - Deletes the pod with the given name
 
+**kubectl delete pod podname1 podname2 podname3**
+- Deletes multiple pods with one command
+
 **cat ~/.kube/config**
 - See the configuration file that kubernetes created after the setup.
 
@@ -139,23 +142,56 @@ app install iputils-ping && app install curl && app install nano && app install 
 **kubectl exec podname -c containername -- date**
 - Example of how to get the date from a specific container in the pod.
 
+## Deployments
+- Deployments allow one to orchestrate the pods. In a way, we allow the kubernetes setup to be more intelligent about the running of the pods via deployments. It allows you to enfore the running of a certain type of state. ex. I want to run 3 instances of my deployment at all times. If one of the instances fail, it could be restarted automatically. The deployments does not create the pods. It creates the replica sets.
+
+**kubectl create deployment --help**
+- To see the document about creating deplyments
+
 **kubectl create deployment**
 - Deployments can be created using various combinations of the create deployment command. One could specify the name of the pod, the name of the images, including how many replicas are to be created. ex <b>create deploy test --image=httpd --replicas=3</b>
 
 **kubectl get deployments.apps**
  - Shows the deployments that were deployed using the <b>kubectl create deployment</b> command.
 
- **kubectl edit deployments.app**
+ **kubectl edit deployments.app thedeploymentname**
 - Allows you to edit the deployment yaml that was created when you ran the <b>kubectl create deployment</b> command.
 
 **kubectl describe deployments.apps deploymentname**
  - This command just does what it says. It is very similar to the same command but for looking at the details of a pod. Be very sure you look at the events section to better try to understand what is going on. The deployment might need to be debugged and that is a very good way of understanding what is going on.
 
  **kubectl delete deployments.apps deploymentname**
- - Allows one to delete the deployment for the deploymentname.
+ - Allows one to delete the deployment for the deploymentname. The underlying resources like pods will also be deleted.
 
- **kubectl create deploy test --image=httpd --replicas=10 --dry-run=client -o yaml > deploy.yaml**
+ **kubectl create deploy testdeployment --image=httpd --replicas=10 --dry-run=client -o yaml > deploy.yaml**
  - Allows one to quickly generate the deployment yaml file based on the command line parameters.
+ - The following file has been cleaned up a bit. The selection area allows the deployment to match itself with the pods with the same names.
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: testdeployment
+  name: testdeployment
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: testdeployment
+  template:
+    metadata:
+      labels:
+        app: testdeployment
+    spec:
+      containers:
+      - image: httpd
+        name: httpd
+```
+
+### Deployment strategy - Recreate and RollingUpdate
+- There are 2 deployment strategy types. Recreate and RollingUpdate. RollingUpdate is the default and as the title implies, one pod will be swapped in with a new one and it will continue until all the pods are updated. If the new pods are ok and active, the next handfull of pods would also be taken down and the new pods would be swapped in. If one of the pods that have been swapped in has an issue, the deployment will stop. 
+- The Recreate strategy is more descructive. All pods will be killed before the new ones are created. This is more troublesome if want to update the pods in a more subtle way.
+- When updating deployments, it could be useful to set up default strategy values so that fewer pods would be taken off line and so that we enforce that a certain number of pods are kept around.
 
 ## Replicas or Replica sets
 - Replicas or replica sets are managed by Kubernetes using deployments and deployment commands and we never need to manage them outselves. You can see what is happening by running a few commands to better understand the process. <b><i>Be aware that some old replicas will still hang around even after new replicas come online.</i></b>
@@ -211,3 +247,27 @@ spec:
 - The ETCD is like the "brains" of the control plane.
 
 ![Pods Configuration](./Images/pods.png)
+
+## Namespaces
+ A namespace in the Kubernates world is a logical grouping of resources within a single cluster. The names of resources needs to be unique within a namespace but not across namespaces. The scoping of namespaces are only applied to objects (Deployments, Services)... A similar idea in the networking world would be to isolate resources behind a subnet. <i>It is said that we should use a different namespace other than the default cluster in a production environment.</i> Namespaces allows you to regulate the traffic on the namespace as well as apply restrictions on the namespace like roles so certain people cannot have access to the resources of the namespace. 
+
+**kubectl get namespaces**
+- Lists the existing namespace.
+
+**kubectl create namespace uniquenamespacename**
+- Creates the namespace with the given name.
+
+**kubectl create namespace uniquenamespacename --dry-run=client -o yaml**
+- Lists the namespace creation text in the yaml format
+
+**kubectl delete namespace uniquenamespacename**
+- Deletes the namespace including all of the resources in the namespace. It is a quick way to quicly clean up pods, services and so on.
+
+**kubectl get pods --namespace default**
+- Get pods from the default namespace. The default namespace is where all resources/objects will appear.
+
+**kubectl run someotherpod --image=httpd --namespace mynamespace**
+- Creating a pod on the fly and adding it to the namespace called mynamespace.
+
+**kubectl config set-context --current --namespace mynamespace**
+- Modifies the current namespace so that you can switch to a namespace other than the default namespace.
